@@ -13,9 +13,10 @@ const PORT = process.env.PORT || 4000;
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-functions-key'],
+  credentials: false,
 }));
 app.use(express.json());
 
@@ -24,8 +25,9 @@ app.use(express.json());
 // The frontend sends it as the x-api-key header.
 function checkApiKey(req, res, next) {
   const key = process.env.API_KEY;
-  if (!key) return next(); // No key set — allow all (for initial testing)
-  if (req.headers['x-api-key'] === key) return next();
+  if (!key) return next();
+  const sentKey = req.headers['x-api-key'] || req.headers['x-functions-key'];
+  if (sentKey === key) return next();
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
