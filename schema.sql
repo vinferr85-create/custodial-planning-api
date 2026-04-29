@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS rooms (
   appliances       INT NOT NULL DEFAULT 0,
   microwaves       INT NOT NULL DEFAULT 0,
   mats             INT NOT NULL DEFAULT 0,
+  floor_type        VARCHAR(20)  NOT NULL DEFAULT 'Hard Floor',
+  hard_split        INT          NOT NULL DEFAULT 50,
   requires_cleaning BOOLEAN NOT NULL DEFAULT TRUE,
   notes            VARCHAR(500),
   created_at       TIMESTAMPTZ DEFAULT NOW(),
@@ -59,6 +61,10 @@ CREATE TABLE IF NOT EXISTS factors (
 CREATE INDEX IF NOT EXISTS idx_rooms_building    ON rooms (building);
 CREATE INDEX IF NOT EXISTS idx_rooms_space_type  ON rooms (space_type);
 CREATE INDEX IF NOT EXISTS idx_custodians_building ON custodians (building);
+
+-- Migration: add floor_type / hard_split if upgrading an existing database
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS floor_type  VARCHAR(20) NOT NULL DEFAULT 'Hard Floor';
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS hard_split  INT         NOT NULL DEFAULT 50;
 
 -- Seed default factors for all 15 space types
 INSERT INTO factors (space_type, factor) VALUES
