@@ -13,10 +13,9 @@ const PORT = process.env.PORT || 4000;
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: '*',
+  origin: process.env.FRONTEND_URL || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-functions-key'],
-  credentials: false,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
 }));
 app.use(express.json());
 
@@ -25,9 +24,8 @@ app.use(express.json());
 // The frontend sends it as the x-api-key header.
 function checkApiKey(req, res, next) {
   const key = process.env.API_KEY;
-  if (!key) return next();
-  const sentKey = req.headers['x-api-key'] || req.headers['x-functions-key'];
-  if (sentKey === key) return next();
+  if (!key) return next(); // No key set — allow all (for initial testing)
+  if (req.headers['x-api-key'] === key) return next();
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
@@ -73,14 +71,16 @@ app.post('/api/rooms', checkApiKey, async (req, res) => {
       INSERT INTO rooms
         (building, room_number, floor, space_type, sqft,
          fixtures, bins, dispensers, mirrors, appliances,
-         microwaves, mats, requires_cleaning, notes)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         microwaves, mats, requires_cleaning, notes,
+         floor_type, hard_split)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *`,
       [
         b.building, b.roomNumber, b.floor || '1', b.spaceType,
         b.sqft || 0, b.fixtures || 1, b.bins || 1, b.dispensers || 1,
         b.mirrors || 0, b.appliances || 0, b.microwaves || 0, b.mats || 0,
         b.requiresCleaning !== false, b.notes || '',
+        b.floorType || 'Hard Floor', b.hardSplit ?? 50,
       ]
     );
     res.status(201).json(normaliseRoom(result.rows[0]));
@@ -105,8 +105,9 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
         INSERT INTO rooms
           (building, room_number, floor, space_type, sqft,
            fixtures, bins, dispensers, mirrors, appliances,
-           microwaves, mats, requires_cleaning, notes)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+           microwaves, mats, requires_cleaning, notes,
+           floor_type, hard_split)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
         ON CONFLICT (building, room_number) DO UPDATE SET
           space_type        = EXCLUDED.space_type,
           sqft              = EXCLUDED.sqft,
@@ -119,6 +120,8 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
           mats              = EXCLUDED.mats,
           requires_cleaning = EXCLUDED.requires_cleaning,
           notes             = EXCLUDED.notes,
+          floor_type        = EXCLUDED.floor_type,
+          hard_split        = EXCLUDED.hard_split,
           updated_at        = NOW()
         RETURNING id`,
         [
@@ -127,6 +130,7 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
           b.sqft || 0, b.fixtures || 1, b.bins || 1, b.dispensers || 1,
           b.mirrors || 0, b.appliances || 0, b.microwaves || 0, b.mats || 0,
           b.requiresCleaning !== false, b.notes || '',
+          b.floorType || 'Hard Floor', b.hardSplit ?? 50,
         ]
       );
       inserted.push(r.rows[0].id);
@@ -152,14 +156,16 @@ app.put('/api/rooms/:id', checkApiKey, async (req, res) => {
         space_type        = $4,  sqft           = $5,  fixtures     = $6,
         bins              = $7,  dispensers     = $8,  mirrors      = $9,
         appliances        = $10, microwaves     = $11, mats         = $12,
-        requires_cleaning = $13, notes          = $14, updated_at   = NOW()
-      WHERE id = $15
+        requires_cleaning = $13, notes          = $14,
+        floor_type        = $15, hard_split     = $16, updated_at   = NOW()
+      WHERE id = $17
       RETURNING *`,
       [
         b.building, b.roomNumber, b.floor || '1', b.spaceType,
         b.sqft || 0, b.fixtures || 1, b.bins || 1, b.dispensers || 1,
         b.mirrors || 0, b.appliances || 0, b.microwaves || 0, b.mats || 0,
         b.requiresCleaning !== false, b.notes || '',
+        b.floorType || 'Hard Floor', b.hardSplit ?? 50,
         req.params.id,
       ]
     );
@@ -308,6 +314,8 @@ function normaliseRoom(r) {
     mats:             r.mats,
     requiresCleaning: r.requires_cleaning,
     notes:            r.notes || '',
+    floorType:        r.floor_type || 'Hard Floor',
+    hardSplit:        r.hard_split ?? 50,
   };
 }
 
