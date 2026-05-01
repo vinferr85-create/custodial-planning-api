@@ -77,8 +77,8 @@ app.post('/api/rooms', checkApiKey, async (req, res) => {
       RETURNING *`,
       [
         b.building, b.roomNumber, b.floor || '1', b.spaceType,
-        b.sqft || 0, b.fixtures || 1, b.bins || 1, b.dispensers || 1,
-        b.mirrors || 0, b.appliances || 0, b.microwaves || 0, b.mats || 0,
+        b.sqft || 0, b.fixtures ?? 1, b.bins ?? 1, b.dispensers ?? 1,
+        b.mirrors ?? 0, b.appliances ?? 0, b.microwaves ?? 0, b.mats ?? 0,
         b.requiresCleaning !== false, b.notes || '',
         b.floorType || 'Hard Floor', b.hardSplit ?? 50,
       ]
@@ -127,8 +127,8 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
         [
           b.building || 'Unknown', b.roomNumber || '?',
           b.floor || '1', b.spaceType || 'Office / Admin Space',
-          b.sqft || 0, b.fixtures || 1, b.bins || 1, b.dispensers || 1,
-          b.mirrors || 0, b.appliances || 0, b.microwaves || 0, b.mats || 0,
+          b.sqft || 0, b.fixtures ?? 1, b.bins ?? 1, b.dispensers ?? 1,
+          b.mirrors ?? 0, b.appliances ?? 0, b.microwaves ?? 0, b.mats ?? 0,
           b.requiresCleaning !== false, b.notes || '',
           b.floorType || 'Hard Floor', b.hardSplit ?? 50,
         ]
@@ -162,8 +162,8 @@ app.put('/api/rooms/:id', checkApiKey, async (req, res) => {
       RETURNING *`,
       [
         b.building, b.roomNumber, b.floor || '1', b.spaceType,
-        b.sqft || 0, b.fixtures || 1, b.bins || 1, b.dispensers || 1,
-        b.mirrors || 0, b.appliances || 0, b.microwaves || 0, b.mats || 0,
+        b.sqft || 0, b.fixtures ?? 1, b.bins ?? 1, b.dispensers ?? 1,
+        b.mirrors ?? 0, b.appliances ?? 0, b.microwaves ?? 0, b.mats ?? 0,
         b.requiresCleaning !== false, b.notes || '',
         b.floorType || 'Hard Floor', b.hardSplit ?? 50,
         req.params.id,
