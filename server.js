@@ -1,6 +1,9 @@
 // server.js — Custodial Planning Suite API
 // Single Express server with all routes for Rooms, Custodians, and Factors.
 // Deployed on Render as a Web Service.
+//
+// SQL migration to run in TablePlus (add preferred_shift column):
+//   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS preferred_shift VARCHAR(20) NOT NULL DEFAULT 'Auto';
 
 require('dotenv').config();
 const express = require('express');
@@ -72,8 +75,8 @@ app.post('/api/rooms', checkApiKey, async (req, res) => {
         (building, room_number, floor, space_type, sqft,
          fixtures, bins, dispensers, mirrors, appliances,
          microwaves, mats, requires_cleaning, notes,
-         floor_type, hard_split)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         floor_type, hard_split, preferred_shift)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
       RETURNING *`,
       [
         b.building, b.roomNumber, b.floor || '1', b.spaceType,
@@ -81,6 +84,7 @@ app.post('/api/rooms', checkApiKey, async (req, res) => {
         b.mirrors ?? 0, b.appliances ?? 0, b.microwaves ?? 0, b.mats ?? 0,
         b.requiresCleaning !== false, b.notes || '',
         b.floorType || 'Hard Floor', b.hardSplit ?? 50,
+        b.preferredShift || 'Auto',
       ]
     );
     res.status(201).json(normaliseRoom(result.rows[0]));
@@ -106,8 +110,8 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
           (building, room_number, floor, space_type, sqft,
            fixtures, bins, dispensers, mirrors, appliances,
            microwaves, mats, requires_cleaning, notes,
-           floor_type, hard_split)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+           floor_type, hard_split, preferred_shift)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         ON CONFLICT (building, room_number) DO UPDATE SET
           space_type        = EXCLUDED.space_type,
           sqft              = EXCLUDED.sqft,
@@ -122,6 +126,7 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
           notes             = EXCLUDED.notes,
           floor_type        = EXCLUDED.floor_type,
           hard_split        = EXCLUDED.hard_split,
+          preferred_shift   = EXCLUDED.preferred_shift,
           updated_at        = NOW()
         RETURNING id`,
         [
@@ -131,6 +136,7 @@ app.post('/api/rooms/bulk', checkApiKey, async (req, res) => {
           b.mirrors ?? 0, b.appliances ?? 0, b.microwaves ?? 0, b.mats ?? 0,
           b.requiresCleaning !== false, b.notes || '',
           b.floorType || 'Hard Floor', b.hardSplit ?? 50,
+          b.preferredShift || 'Auto',
         ]
       );
       inserted.push(r.rows[0].id);
@@ -157,8 +163,9 @@ app.put('/api/rooms/:id', checkApiKey, async (req, res) => {
         bins              = $7,  dispensers     = $8,  mirrors      = $9,
         appliances        = $10, microwaves     = $11, mats         = $12,
         requires_cleaning = $13, notes          = $14,
-        floor_type        = $15, hard_split     = $16, updated_at   = NOW()
-      WHERE id = $17
+        floor_type        = $15, hard_split     = $16,
+        preferred_shift   = $17, updated_at     = NOW()
+      WHERE id = $18
       RETURNING *`,
       [
         b.building, b.roomNumber, b.floor || '1', b.spaceType,
@@ -166,6 +173,7 @@ app.put('/api/rooms/:id', checkApiKey, async (req, res) => {
         b.mirrors ?? 0, b.appliances ?? 0, b.microwaves ?? 0, b.mats ?? 0,
         b.requiresCleaning !== false, b.notes || '',
         b.floorType || 'Hard Floor', b.hardSplit ?? 50,
+        b.preferredShift || 'Auto',
         req.params.id,
       ]
     );
@@ -316,6 +324,7 @@ function normaliseRoom(r) {
     notes:            r.notes || '',
     floorType:        r.floor_type || 'Hard Floor',
     hardSplit:        r.hard_split ?? 50,
+    preferredShift:   r.preferred_shift || 'Auto',
   };
 }
 
